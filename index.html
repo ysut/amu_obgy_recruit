@@ -127,13 +127,6 @@
       <h2 class="text-xl font-bold mb-4">応募フォーム</h2>
       <p class="text-sm text-gray-600 mb-4">以下のフォームを送信すると、担当者にメールが届きます。2–3営業日以内にご連絡します。</p>
 
-      <!--
-        ★ フォーム送信先（Formspree 推奨）：
-        1) https://formspree.io にログイン → 新規フォーム作成
-        2) 生成された Endpoint URL を下の action="…" に貼り付け
-        3) 受信先メールを Formspree 側で設定
-        4) Free枠でも十分利用可（スパム対策にハニーポットを同梱）
-      -->
       <form id="entryForm" action="https://formspree.io/f/mnnglwgd" method="POST" class="space-y-4" novalidate>
         <!-- ハニーポット（ボット対策） -->
         <input type="text" name="company" class="hp" tabindex="-1" autocomplete="off" />
