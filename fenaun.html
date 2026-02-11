@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>FENa / FEUN 計算</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <style>
+    body { font-family: Arial, "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; margin: 16px; color:#222; }
+    .wrap { max-width: 900px; }
+    h1 { font-size: 20px; margin: 0 0 10px; }
+    .note { font-size: 12px; color:#555; margin-bottom: 12px; }
+    .grid { display: table; width: 100%; border-collapse: collapse; }
+    .row { display: table-row; }
+    .cell { display: table-cell; padding: 8px; vertical-align: top; }
+    .box { border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; }
+    .box h2 { font-size: 16px; margin: 0 0 10px; }
+    label { display: block; font-size: 12px; color:#444; margin-bottom: 4px; }
+    input[type="text"]{
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .unit { font-size: 12px; color:#666; margin-top: 4px; }
+    .btns { margin-top: 10px; }
+    button{
+      padding: 8px 12px;
+      border: 1px solid #bbb;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 8px;
+      font-size: 13px;
+    }
+    button:hover { background: #f1f1f1; }
+    .results { margin-top: 12px; }
+    .pill {
+      display: inline-block;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #ddd;
+      background: #fff;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .value { font-weight: bold; }
+    .warn { color: #b00020; font-size: 12px; margin-top: 8px; }
+    .hint { font-size: 12px; color:#555; margin-top: 10px; line-height: 1.5; }
+    .small { font-size: 11px; color:#666; margin-top: 8px; line-height: 1.5; }
+    .footer { margin-top: 14px; font-size: 11px; color:#777; }
+    .mono { font-family: Consolas, Menlo, monospace; }
+    .interp { margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #e1e1e1; border-radius: 6px; }
+    .interp h3 { font-size: 14px; margin: 0 0 8px; }
+    .interp ul { margin: 0; padding-left: 18px; }
+    .interp li { margin: 4px 0; font-size: 12px; color:#333; }
+    .toggleRow { margin-top: 8px; font-size: 12px; }
+    .toggleRow input { vertical-align: middle; }
+    .toggleRow span { vertical-align: middle; }
+    .mini { font-size: 11px; color:#666; margin-top: 6px; }
+    .tableBox { display:none; margin-top: 8px; }
+    .k { font-weight: bold; }
+    .badge { display:inline-block; padding:2px 6px; border:1px solid #ddd; border-radius:999px; background:#fff; font-size:11px; margin-right:6px; }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>FENa / FEUN（尿素窒素） 計算ツール</h1>
+  <div class="note">
+    入力値から自動計算します（外部通信なし・ローカル完結）。解釈コメントは CCJM Table 2 の「診断性能レンジ」を参考情報として表示します（診断の確定ではありません）。
+  </div>
+
+  <div class="grid">
+    <div class="row">
+      <div class="cell" style="width:50%;">
+        <div class="box">
+          <h2>FENa（Fractional Excretion of Na）</h2>
+
+          <label>血清 Na</label>
+          <input id="p_na" type="text" placeholder="例: 140">
+          <div class="unit">mEq/L</div>
+
+          <label style="margin-top:10px;">尿 Na</label>
+          <input id="u_na" type="text" placeholder="例: 20">
+          <div class="unit">mEq/L</div>
+
+          <label style="margin-top:10px;">血清 Cr</label>
+          <input id="p_cr" type="text" placeholder="例: 2.1">
+          <div class="unit">mg/dL</div>
+
+          <label style="margin-top:10px;">尿 Cr</label>
+          <input id="u_cr" type="text" placeholder="例: 80">
+          <div class="unit">mg/dL</div>
+
+          <div class="hint">
+            公式：<span class="mono">FENa(%) = (U-Na × P-Cr) / (P-Na × U-Cr) × 100</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cell" style="width:50%;">
+        <div class="box">
+          <h2>FEUN / FEU（Fractional Excretion of Urea Nitrogen）</h2>
+
+          <label>血清 BUN</label>
+          <input id="p_bun" type="text" placeholder="例: 35">
+          <div class="unit">mg/dL（尿素窒素）</div>
+
+          <label style="margin-top:10px;">尿 UN（尿素窒素）</label>
+          <input id="u_un" type="text" placeholder="例: 250">
+          <div class="unit">mg/dL（尿素窒素）</div>
+
+          <label style="margin-top:10px;">血清 Cr（共通）</label>
+          <input id="p_cr2" type="text" placeholder="例: 2.1（左と同じでOK）">
+          <div class="unit">mg/dL</div>
+
+          <label style="margin-top:10px;">尿 Cr（共通）</label>
+          <input id="u_cr2" type="text" placeholder="例: 80（左と同じでOK）">
+          <div class="unit">mg/dL</div>
+
+          <div class="hint">
+            公式：<span class="mono">FEUN(%) = (U-UN × P-Cr) / (P-BUN × U-Cr) × 100</span><br>
+            ※BUNと尿UNを同じ「尿素窒素（mg/dL）」で揃える想定です。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <button id="btn_calc" type="button">計算</button>
+    <button id="btn_reset" type="button">リセット</button>
+    <button id="btn_copy" type="button">結果をコピー</button>
+  </div>
+
+  <div class="results box">
+    <h2>結果</h2>
+
+    <div class="toggleRow">
+      <label style="display:inline;">
+        <input id="chk_diuretic" type="checkbox">
+        <span>利尿薬投与あり（直近 24〜48 時間など）</span>
+      </label>
+      <div class="mini">
+        Table 2 に「on diuretic（利尿薬中）」の性能が別枠で載っているため、ここをONにすると表示コメントがそれに寄ります。
+      </div>
+    </div>
+
+    <div id="out_pills" style="margin-top:10px;">
+      <div class="pill">FENa: <span class="value" id="out_fena">-</span> %</div>
+      <div class="pill">FEUN: <span class="value" id="out_feun">-</span> %</div>
+    </div>
+
+    <div id="out_warn" class="warn"></div>
+
+    <div class="interp">
+      <h3>解釈メモ（参考）</h3>
+      <div id="out_interp" class="small">入力すると表示されます。</div>
+
+      <div style="margin-top:8px;">
+        <button id="btn_toggle_table" type="button">Table 2 の性能レンジを表示/非表示</button>
+        <div id="table_box" class="tableBox small"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      注意：単回の指数だけで病態を確定しません。検体タイミング、輸液、利尿薬、敗血症、CKD、造影後、横紋筋融解などで解釈が崩れます。
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+(function(){
+  function $(id){ return document.getElementById(id); }
+
+  function parseNum(s){
+    if (s === null || s === undefined) return NaN;
+    s = ("" + s).replace(/,/g, "").replace(/\s+/g, "");
+    s = s.replace(/[０-９．－]/g, function(ch){
+      var map = {
+        "０":"0","１":"1","２":"2","３":"3","４":"4",
+        "５":"5","６":"6","７":"7","８":"8","９":"9",
+        "．":".","－":"-"
+      };
+      return map[ch] || ch;
+    });
+    return parseFloat(s);
+  }
+
+  function round2(x){ return Math.round(x * 100) / 100; }
+
+  // CCJM (Gotfried et al. 2012) の “よく教科書的に使われるカットオフ” を反映
+  // FENa: <1% prerenal, >3% intrinsic
+  // FEU/FEUN: <35% prerenal, >50% intrinsic
+  function classifyFENa(f){
+    if (isNaN(f)) return {label:"未評価", tag:""};
+    if (f < 1) return {label:"腎前性を支持しやすい (<1%)", tag:"prerenal"};
+    if (f > 3) return {label:"腎性/ATNなどを支持しやすい (>3%)", tag:"intrinsic"};
+    return {label:"グレーゾーン (1–3%)", tag:"gray"};
+  }
+
+  function classifyFEUN(f){
+    if (isNaN(f)) return {label:"未評価", tag:""};
+    if (f < 35) return {label:"腎前性を支持しやすい (<35%)", tag:"prerenal"};
+    if (f > 50) return {label:"腎性/ATNなどを支持しやすい (>50%)", tag:"intrinsic"};
+    return {label:"グレーゾーン (35–50%)", tag:"gray"};
+  }
+
+  function renderTable2(onDiuretic){
+    // Table 2 の数値レンジをそのまま「参考」として提示（臨床試験間の幅）
+    // ※この表示は “診断性能のイメージ” 用で、個々の患者での確率を保証しない
+    var html = "";
+    html += "<div><span class='badge'>出典</span>CCJM Table 2（臨床研究のレンジ）</div>";
+
+    html += "<div style='margin-top:6px;'><span class='k'>Sensitivity（感度）</span><br>";
+    html += "腎前性: FENa 78–96% / FEU 48–92%<br>";
+    html += "腎前性(利尿薬中): FENa 29–63% / FEU 79–100%<br>";
+    html += "腎性: FENa 56–75% / FEU 68–75%</div>";
+
+    html += "<div style='margin-top:6px;'><span class='k'>Specificity（特異度）</span><br>";
+    html += "腎前性: FENa 67–96% / FEU 75–100%<br>";
+    html += "腎前性(利尿薬中): FENa 81–82% / FEU 33–91%<br>";
+    html += "腎性: FENa 78–100% / FEU 48–98%</div>";
+
+    html += "<div style='margin-top:6px;'><span class='k'>PPV（陽性的中率）</span><br>";
+    html += "腎前性: FENa 86–98% / FEU 79–100%<br>";
+    html += "腎前性(利尿薬中): FENa 86–89% / FEU 71–98%<br>";
+    html += "腎性: FENa 64–100% / FEU 43–94%</div>";
+
+    html += "<div style='margin-top:6px;'><span class='k'>NPV（陰性的中率）</span><br>";
+    html += "腎前性: FENa 60–86% / FEU 43–83%<br>";
+    html += "腎前性(利尿薬中): FENa 18–49% / FEU 44–83%<br>";
+    html += "腎性: FENa 82–86% / FEU 79–86%</div>";
+
+    html += "<div class='mini' style='margin-top:8px;'>※研究ごとにAKI定義とカットオフが異なるため、レンジ表示です。</div>";
+    if (onDiuretic){
+      html += "<div class='mini'>利尿薬中は、腎前性検出の感度が FENa より FEU の方が高いレンジになっています（Table 2）。</div>";
+    }
+    return html;
+  }
+
+  function interpret(fena, feun, onDiuretic){
+    var a = [];
+    var c1 = classifyFENa(fena);
+    var c2 = classifyFEUN(feun);
+
+    // まず各指標の判定
+    if (!isNaN(fena)) a.push("FENa: " + c1.label);
+    else a.push("FENa: 入力不足で判定できません。");
+
+    if (!isNaN(feun)) a.push("FEUN: " + c2.label);
+    else a.push("FEUN: 入力不足で判定できません。");
+
+    // 組み合わせコメント
+    if (!isNaN(fena) && !isNaN(feun)){
+      if (c1.tag === "prerenal" && c2.tag === "prerenal"){
+        if (onDiuretic){
+          a.push("両者とも腎前性寄り。ただし利尿薬中は FENa が上がりやすいので、解釈は FEUN をより重視しやすいです（Table 2: 腎前性(利尿薬中)の感度が FEU で高めのレンジ）。");
+        } else {
+          a.push("両者とも腎前性寄り。臨床的には体液量/循環動態の評価と合わせて整合性を確認します。");
+        }
+      } else if (c1.tag === "intrinsic" && c2.tag === "intrinsic"){
+        a.push("両者とも腎性（ATNなど）寄り。尿沈渣や経時変化、背景疾患と合わせて評価します。");
+      } else if (c1.tag === "gray" || c2.tag === "gray"){
+        a.push("少なくとも一方がグレーゾーンです。単回の指数で割り切らず、他所見（尿沈渣、経時変化、臨床状況）に寄せた判断が安全です。");
+      } else {
+        if (onDiuretic){
+          a.push("FENa と FEUN が不一致です。利尿薬中は FENa が腎前性でも高くなり得るため、まず FEUN 側の整合性を優先して考える場面があります（Table 2）。");
+        } else {
+          a.push("FENa と FEUN が不一致です。どちらかが状況依存でブレている可能性があるため、病歴と他検査で裏取りが必要です。");
+        }
+      }
+    }
+
+    // 注意点（短く）
+    a.push("注意: 造影後、横紋筋融解、急性糸球体腎炎などでは FENa が“低く見える”ことがあり得ます。利尿薬は FENa を“高く”しやすいです。");
+    a.push("この表示は Table 2 の『検査としての当たりやすさ（感度/特異度など）』を踏まえたメモで、診断確定ではありません。");
+
+    // HTML化
+    var html = "<ul>";
+    for (var i=0;i<a.length;i++){
+      html += "<li>" + escapeHtml(a[i]) + "</li>";
+    }
+    html += "</ul>";
+    return html;
+  }
+
+  function escapeHtml(s){
+    // IE11向けの簡易エスケープ
+    return (""+s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+  }
+
+  function calc(){
+    var warn = [];
+    $("out_warn").innerHTML = "";
+
+    var p_na = parseNum($("p_na").value);
+    var u_na = parseNum($("u_na").value);
+    var p_cr = parseNum($("p_cr").value);
+    var u_cr = parseNum($("u_cr").value);
+
+    var p_bun = parseNum($("p_bun").value);
+    var u_un  = parseNum($("u_un").value);
+    var p_cr2 = parseNum($("p_cr2").value);
+    var u_cr2 = parseNum($("u_cr2").value);
+
+    if (isNaN(p_cr2)) p_cr2 = p_cr;
+    if (isNaN(u_cr2)) u_cr2 = u_cr;
+
+    var onDiuretic = $("chk_diuretic").checked;
+
+    // FENa
+    var fena = NaN;
+    if (!isNaN(p_na) && !isNaN(u_na) && !isNaN(p_cr) && !isNaN(u_cr)) {
+      if (p_na === 0 || u_cr === 0) {
+        warn.push("FENa: P-Na または U-Cr が 0 です。");
+      } else {
+        fena = (u_na * p_cr) / (p_na * u_cr) * 100;
+      }
+    }
+
+    // FEUN
+    var feun = NaN;
+    if (!isNaN(p_bun) && !isNaN(u_un) && !isNaN(p_cr2) && !isNaN(u_cr2)) {
+      if (p_bun === 0 || u_cr2 === 0) {
+        warn.push("FEUN: P-BUN または U-Cr が 0 です。");
+      } else {
+        feun = (u_un * p_cr2) / (p_bun * u_cr2) * 100;
+      }
+    }
+
+    $("out_fena").innerHTML = isNaN(fena) ? "-" : round2(fena).toFixed(2);
+    $("out_feun").innerHTML = isNaN(feun) ? "-" : round2(feun).toFixed(2);
+
+    if (warn.length > 0) $("out_warn").innerHTML = warn.join("<br>");
+
+    // 解釈表示
+    $("out_interp").innerHTML = interpret(fena, feun, onDiuretic);
+
+    // Table 2表示内容更新（トグルがONなら中身だけ更新）
+    var tb = $("table_box");
+    if (tb.style.display !== "none"){
+      tb.innerHTML = renderTable2(onDiuretic);
+    }
+  }
+
+  function resetAll(){
+    var ids = ["p_na","u_na","p_cr","u_cr","p_bun","u_un","p_cr2","u_cr2"];
+    for (var i=0;i<ids.length;i++) $(ids[i]).value = "";
+    $("chk_diuretic").checked = false;
+    $("out_fena").innerHTML = "-";
+    $("out_feun").innerHTML = "-";
+    $("out_warn").innerHTML = "";
+    $("out_interp").innerHTML = "入力すると表示されます。";
+    $("table_box").style.display = "none";
+    $("table_box").innerHTML = "";
+  }
+
+  function copyResult(){
+    // 解釈も一緒にコピー
+    var fena = $("out_fena").innerHTML;
+    var feun = $("out_feun").innerHTML;
+    var onDiuretic = $("chk_diuretic").checked ? "あり" : "なし";
+
+    // out_interp はHTMLなので、ざっくりテキスト化
+    var tmp = document.createElement("div");
+    tmp.innerHTML = $("out_interp").innerHTML;
+    var interpText = tmp.innerText || tmp.textContent || "";
+
+    var text = "FENa: " + fena + " %\r\nFEUN: " + feun + " %\r\n利尿薬: " + onDiuretic + "\r\n\r\n【解釈メモ】\r\n" + interpText;
+
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand("copy"); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+
+  function hook(id){
+    var el = $(id);
+    if (!el) return;
+    el.onkeyup = calc;
+    el.onchange = calc;
+  }
+
+  $("btn_calc").onclick = calc;
+  $("btn_reset").onclick = resetAll;
+  $("btn_copy").onclick = function(){ calc(); copyResult(); };
+
+  $("btn_toggle_table").onclick = function(){
+    var tb = $("table_box");
+    if (tb.style.display === "none" || tb.style.display === ""){
+      tb.style.display = "block";
+      tb.innerHTML = renderTable2($("chk_diuretic").checked);
+    } else {
+      tb.style.display = "none";
+      tb.innerHTML = "";
+    }
+  };
+
+  $("chk_diuretic").onchange = calc;
+
+  var fields = ["p_na","u_na","p_cr","u_cr","p_bun","u_un","p_cr2","u_cr2"];
+  for (var i=0;i<fields.length;i++) hook(fields[i]);
+
+  calc();
+})();
+</script>
+</body>
+</html>

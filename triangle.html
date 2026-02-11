@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Career Triangle + Other Breakdown (demo)</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+      color: #111;
+    }
+    h1 { font-size: 18px; margin: 0 0 10px; }
+    .hint { font-size: 13px; color: #444; line-height: 1.6; margin: 0 0 12px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 14px;
+      background: #fafafa;
+    }
+
+    .canvas-wrap { width: min(560px, 100%); margin: 8px 0; }
+    canvas {
+      width: 100%;
+      height: auto;
+      border: 2px solid #111;
+      border-radius: 14px;
+      background: #fff;
+      touch-action: none;
+      user-select: none;
+      display: block;
+    }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    .pillGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .pill {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      text-align: left;
+    }
+    .pill:hover { background: #f6f6f6; }
+    .pill.selected {
+      border-color: #111;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.08) inset;
+    }
+
+    .hidden { display: none; }
+
+    button {
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #f6f6f6; }
+  </style>
+</head>
+<body>
+  <h1>卒後キャリアの方向性（デモ）</h1>
+  <p class="hint">
+    まず「臨床 / 研究 / その他」を合計100%になるようにタップで選んでください。<br>
+    その他が5%以上の場合、「その他は何に近いか」を1つ選ぶ質問が出ます。
+  </p>
+
+  <div class="grid">
+
+    <!-- Triangle -->
+    <div class="card">
+      <h2 style="font-size:16px;margin:0 0 8px;">Q：卒後キャリアの方向性（合計100%）</h2>
+      <div class="hint" style="margin:0 0 8px;">
+        頂点に近いほど、その要素の割合が高くなります。
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="tri" width="600" height="520" aria-label="triangle tap"></canvas>
+      </div>
+
+      <div class="row">
+        <div class="mono" id="outMain">臨床: -, 研究: -, その他: -（合計100%）</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="copyBtn" type="button">配分をコピー</button>
+        <button id="clearBtn" type="button">クリア</button>
+      </div>
+
+      <!-- hidden values -->
+      <input type="hidden" id="clinicalPct" value="">
+      <input type="hidden" id="researchPct" value="">
+      <input type="hidden" id="otherPct" value="">
+      <input type="hidden" id="otherCategory" value="">
+    </div>
+
+    <!-- Other breakdown -->
+    <div class="card hidden" id="otherCard">
+      <h2 style="font-size:16px;margin:0 0 8px;">Q：その他（臨床・研究以外）は何に近いですか？</h2>
+      <div class="hint" style="margin:0 0 10px;">
+        「その他」に含めた内容として、最も近い役割を1つ選んでください（単一選択）。
+      </div>
+
+      <div class="pillGrid" id="pillGrid">
+        <button class="pill" type="button" data-val="医療システム（運営・マネジメント）">医療システム（運営・マネジメント）</button>
+        <button class="pill" type="button" data-val="医療安全・品質改善">医療安全・品質改善</button>
+        <button class="pill" type="button" data-val="感染対策">感染対策</button>
+        <button class="pill" type="button" data-val="公衆衛生・行政（保健所/政策など）">公衆衛生・行政（保健所/政策など）</button>
+        <button class="pill" type="button" data-val="教育（学生・研修医の指導）">教育（学生・研修医の指導）</button>
+        <button class="pill" type="button" data-val="産業（製薬・医療機器）">産業（製薬・医療機器）</button>
+        <button class="pill" type="button" data-val="医療IT/データ（開発・解析）">医療IT/データ（開発・解析）</button>
+        <button class="pill" type="button" data-val="コンサル・ベンチャー">コンサル・ベンチャー</button>
+        <button class="pill" type="button" data-val="国際保健・NGO">国際保健・NGO</button>
+        <button class="pill" type="button" data-val="その他（上記に当てはまらない）">その他（上記に当てはまらない）</button>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <div class="mono" id="outOther">選択: -</div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  // ===== Triangle config =====
+  const canvas = document.getElementById("tri");
+  const ctx = canvas.getContext("2d");
+
+  const outMain = document.getElementById("outMain");
+  const outOther = document.getElementById("outOther");
+  const otherCard = document.getElementById("otherCard");
+
+  const clinicalPctEl = document.getElementById("clinicalPct");
+  const researchPctEl = document.getElementById("researchPct");
+  const otherPctEl = document.getElementById("otherPct");
+  const otherCategoryEl = document.getElementById("otherCategory");
+
+  const copyBtn = document.getElementById("copyBtn");
+  const clearBtn = document.getElementById("clearBtn");
+
+  // Top=研究, Bottom-left=臨床, Bottom-right=その他
+  const V_RESEARCH = { x: 300, y: 60  };
+  const V_CLINICAL = { x: 90,  y: 460 };
+  const V_OTHER    = { x: 510, y: 460 };
+
+  const THRESHOLD_OTHER = 5; // %
+
+  let chosen = { x: null, y: null, clinical: null, research: null, other: null };
+
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Triangle
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#111";
+    ctx.beginPath();
+    ctx.moveTo(V_RESEARCH.x, V_RESEARCH.y);
+    ctx.lineTo(V_OTHER.x, V_OTHER.y);
+    ctx.lineTo(V_CLINICAL.x, V_CLINICAL.y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = "#111";
+    ctx.font = "16px system-ui, -apple-system, Segoe UI, sans-serif";
+
+    ctx.textAlign = "center";
+    ctx.fillText("研究", V_RESEARCH.x, V_RESEARCH.y - 12);
+
+    ctx.textAlign = "right";
+    ctx.fillText("臨床", V_CLINICAL.x - 10, V_CLINICAL.y + 18);
+
+    ctx.textAlign = "left";
+    ctx.fillText("その他", V_OTHER.x + 10, V_OTHER.y + 18);
+
+    // Marker
+    if (chosen.x !== null) {
+      ctx.fillStyle = "#e11d48";
+      ctx.beginPath();
+      ctx.arc(chosen.x, chosen.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(225,29,72,0.25)";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(chosen.x, chosen.y, 10, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Barycentric (A,B,C) => (u,v,w) where u for A, v for B, w for C
+  function barycentric(P, A, B, C) {
+    const v0 = { x: B.x - A.x, y: B.y - A.y };
+    const v1 = { x: C.x - A.x, y: C.y - A.y };
+    const v2 = { x: P.x - A.x, y: P.y - A.y };
+
+    const d00 = v0.x*v0.x + v0.y*v0.y;
+    const d01 = v0.x*v1.x + v0.y*v1.y;
+    const d11 = v1.x*v1.x + v1.y*v1.y;
+    const d20 = v2.x*v0.x + v2.y*v0.y;
+    const d21 = v2.x*v1.x + v2.y*v1.y;
+
+    const denom = (d00 * d11 - d01 * d01);
+    if (denom === 0) return null;
+
+    const v = (d11 * d20 - d01 * d21) / denom;
+    const w = (d00 * d21 - d01 * d20) / denom;
+    const u = 1 - v - w;
+    return { u, v, w };
+  }
+
+  function insideTriangle(weights, eps = 1e-8) {
+    return weights && weights.u >= -eps && weights.v >= -eps && weights.w >= -eps;
+  }
+
+  function closestPointOnSegment(P, A, B) {
+    const AB = { x: B.x - A.x, y: B.y - A.y };
+    const AP = { x: P.x - A.x, y: P.y - A.y };
+    const ab2 = AB.x*AB.x + AB.y*AB.y;
+    if (ab2 === 0) return { x: A.x, y: A.y };
+    let t = (AP.x*AB.x + AP.y*AB.y) / ab2;
+    t = clamp(t, 0, 1);
+    return { x: A.x + t*AB.x, y: A.y + t*AB.y };
+  }
+
+  function closestPointInTriangle(P, A, B, C) {
+    const w = barycentric(P, A, B, C);
+    if (insideTriangle(w)) return P;
+
+    const pAB = closestPointOnSegment(P, A, B);
+    const pBC = closestPointOnSegment(P, B, C);
+    const pCA = closestPointOnSegment(P, C, A);
+
+    function dist2(P1, P2) { const dx=P1.x-P2.x, dy=P1.y-P2.y; return dx*dx+dy*dy; }
+    const dAB = dist2(P, pAB), dBC = dist2(P, pBC), dCA = dist2(P, pCA);
+
+    if (dAB <= dBC && dAB <= dCA) return pAB;
+    if (dBC <= dAB && dBC <= dCA) return pBC;
+    return pCA;
+  }
+
+  function roundTo100(weights) {
+    // weights: {clinical, research, other} in 0..1
+    const raw = [
+      { key: "clinical", val: weights.clinical * 100 },
+      { key: "research", val: weights.research * 100 },
+      { key: "other",    val: weights.other * 100 },
+    ];
+
+    let ints = raw.map(o => ({
+      key: o.key,
+      int: Math.round(o.val),
+      frac: o.val - Math.floor(o.val)
+    }));
+
+    let sum = ints.reduce((s,o)=>s+o.int, 0);
+
+    if (sum !== 100) {
+      const diff = 100 - sum;
+      ints.sort((a,b) => diff > 0 ? (b.frac - a.frac) : (a.frac - b.frac));
+      let i = 0;
+      let remain = Math.abs(diff);
+      while (remain > 0) {
+        ints[i % ints.length].int += (diff > 0 ? 1 : -1);
+        remain--; i++;
+      }
+    }
+
+    const map = Object.fromEntries(ints.map(o => [o.key, o.int]));
+    return map;
+  }
+
+  function updateOtherUI() {
+    // show only if other >= threshold
+    const show = chosen.other !== null && chosen.other >= THRESHOLD_OTHER;
+    otherCard.classList.toggle("hidden", !show);
+
+    // if hiding, clear otherCategory
+    if (!show) {
+      otherCategoryEl.value = "";
+      outOther.textContent = "選択: -";
+      document.querySelectorAll(".pill").forEach(p => p.classList.remove("selected"));
+    }
+  }
+
+  function setFromPoint(Praw) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    // Convert to canvas coords
+    const P0 = { x: Praw.x * scaleX, y: Praw.y * scaleY };
+    const P = closestPointInTriangle(P0, V_RESEARCH, V_CLINICAL, V_OTHER);
+    const w = barycentric(P, V_RESEARCH, V_CLINICAL, V_OTHER);
+    if (!w) return;
+
+    // mapping: A=研究(u), B=臨床(v), C=その他(w)
+    const weights = {
+      research: w.u,
+      clinical: w.v,
+      other: w.w
+    };
+
+    const pct = roundTo100(weights);
+
+    chosen = {
+      x: P.x, y: P.y,
+      clinical: pct.clinical,
+      research: pct.research,
+      other: pct.other
+    };
+
+    // write outputs
+    outMain.textContent = `臨床: ${chosen.clinical}%, 研究: ${chosen.research}%, その他: ${chosen.other}%（合計100%）`;
+
+    clinicalPctEl.value = String(chosen.clinical);
+    researchPctEl.value = String(chosen.research);
+    otherPctEl.value = String(chosen.other);
+
+    draw();
+    updateOtherUI();
+  }
+
+  function pointerToLocal(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = (ev.touches && ev.touches[0]) ? ev.touches[0].clientX : ev.clientX;
+    const clientY = (ev.touches && ev.touches[0]) ? ev.touches[0].clientY : ev.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  canvas.addEventListener("click", (ev) => setFromPoint(pointerToLocal(ev)));
+  canvas.addEventListener("touchstart", (ev) => {
+    ev.preventDefault();
+    setFromPoint(pointerToLocal(ev));
+  }, { passive: false });
+
+  // ===== Other category (single tap) =====
+  const pills = Array.from(document.querySelectorAll(".pill"));
+
+  function selectOtherCategory(val, btn) {
+    pills.forEach(p => p.classList.remove("selected"));
+    btn.classList.add("selected");
+    otherCategoryEl.value = val;
+    outOther.textContent = `選択: ${val}`;
+  }
+
+  pills.forEach(btn => {
+    btn.addEventListener("click", () => {
+      // ignore if otherCard hidden (shouldn't happen but safe)
+      if (otherCard.classList.contains("hidden")) return;
+      selectOtherCategory(btn.dataset.val, btn);
+    });
+  });
+
+  // ===== Copy & Clear =====
+  copyBtn.addEventListener("click", async () => {
+    if (chosen.clinical === null) return;
+    const text = JSON.stringify({
+      clinical: chosen.clinical,
+      research: chosen.research,
+      other: chosen.other,
+      other_category: otherCategoryEl.value || null
+    });
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = "コピーしました";
+      setTimeout(() => (copyBtn.textContent = "配分をコピー"), 900);
+    } catch {
+      window.prompt("コピーしてください:", text);
+    }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    chosen = { x: null, y: null, clinical: null, research: null, other: null };
+    outMain.textContent = "臨床: -, 研究: -, その他: -（合計100%）";
+
+    clinicalPctEl.value = "";
+    researchPctEl.value = "";
+    otherPctEl.value = "";
+    otherCategoryEl.value = "";
+
+    outOther.textContent = "選択: -";
+    otherCard.classList.add("hidden");
+    pills.forEach(p => p.classList.remove("selected"));
+
+    draw();
+  });
+
+  // initial draw
+  draw();
+</script>
+</body>
+</html>
